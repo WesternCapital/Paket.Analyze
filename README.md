@@ -8,7 +8,7 @@ I want to know
 - what packages are neither directly references in a paket.references nor required transitively
 
 Possible methods
-- Find what transitively wants a package even if it's at the top level
+- Find what transitively wants a package even if that package is also specified at the top level (find-refs-with-transitive?). This helps us identify when a package might have been specified to pin a transitive version versus it's now just unused
 
 It'd be nice to know what packages aren't actually reference in a project, but I'm not sure there's a clear way to determine that.
 If nothing else it's a much harder problem
