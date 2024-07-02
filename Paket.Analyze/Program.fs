@@ -8,28 +8,63 @@ module Trial =
         | Ok (a,_) -> a
         | Bad errorList -> errorHandler errorList
 
+    let map = Trial.lift
+
+
+let packageNameFromTriple (_group, packageName, _version) = packageName
+
+module Deps =
+    let rootDirectory (deps:Dependencies) = DirectoryInfo(deps.RootPath)
+    let Process (dependencies: Dependencies) f =
+            dependencies |> rootDirectory |> PaketEnv.fromRootDirectory
+            >>= f
+            |> returnOrFail
 
 [<EntryPoint>]
 let main _ =
-    let paketEnv = 
-        PaketEnv.locatePaketRootDirectory (System.IO.DirectoryInfo "C:/Dev/")
-        |> Option.defaultWith (fun _ -> invalidOp "Cannot locate paket root")
-        |> PaketEnv.fromRootDirectory
-        |> Trial.defaultWith (fun _ -> invalidOp "Couldn't resolve paket env")
+    // let targetDirectory = "C:/Dev/"
+    // let targetGroup = GroupName "Current"
+    let targetDirectory = "X:/source/Paket.Analyze"
+    let targetGroup = Paket.Constants.MainDependencyGroup
 
-
-    let references = FindReferences.FindReferencesForPackage (GroupName "Current") (PackageName "Figgle") paketEnv
+    let deps = Paket.Dependencies.Locate targetDirectory
     
-    let printReferences (projectList : ProjectFile list) =
-        printfn "ref list: "
-        for p in projectList do
-            printfn "%s" p.FileName
-            
+    let ListAllDependenciesForReferencesFiles groupName environment = trial {
+        let! lockFile = environment |> PaketEnv.ensureLockFileExists
+        
+        let listAllDepsForReferencesFile groupName (refFile: ReferencesFile) = 
+            lockFile.GetPackageHullSafe (refFile, groupName)
 
-    // TODO: I need to poke around for code that maps domain messages to console errors
-    references
-    |> Trial.defaultWith (fun domainErrors -> failwithf "Stuff went wrong during reference discovery: %A" domainErrors)
-    |> printReferences
+        return! 
+            environment.Projects
+            |> List.map (snd >> listAllDepsForReferencesFile groupName)
+            |> Trial.collect
+            |> Trial.lift (List.collect Set.toList)
+    }
+
+    let ListDirectDependenciesForReferencesFiles groupName environment = trial {
+        let! lockFile = environment |> PaketEnv.ensureLockFileExists
+
+        let listDepsForReferencesFile refFile =
+            deps.GetDirectDependencies(refFile) 
+        
+        return
+            environment.Projects
+            |> List.collect (snd >> listDepsForReferencesFile)
+            |> List.map packageNameFromTriple
+    }
+
+    let rootDependencies = deps.GetDirectDependencies()
+    
+    let collectedDirectReferences =
+        ListDirectDependenciesForReferencesFiles targetGroup |> Deps.Process deps
+
+    printfn "Root deps: "
+
+    // rootDependencies
+    collectedDirectReferences
+    |> List.map (printfn "%A")
+    |> ignore
+
     printfn "Done"
     0
-// For more information see https://aka.ms/fsharp-console-apps
