@@ -93,9 +93,15 @@ Q: Is there an a composable way to turn domain errors into strings?
 - A: [yes, DomainMessage has an overloaded .ToString](https://github.com/fsprojects/Paket/blob/d6fee2407c91a84ef16c39a92cdcfc758e9f25f7/src/Paket.Core/Common/Domain.fs#L151)
 
 
+## Tasks
+
+- [ ] Clean up the readme
+- [ ] package as a dotnet tool
+
 
 ## Future: 
 
 Projects I'd like to work on in the future
 - set up some in-repo automated tests (instead of just validating it against my projects)
+- Improve the error messages / try to format them like paket does instead of showing the full stack trace
 - ask what projects a package is referenced in, direct or transitive (and maybe communicate if the reference is direct or transitive?). This is paket find-refs, but including transitive references

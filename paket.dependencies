@@ -5,3 +5,4 @@ storage: none
 
 nuget Paket.Core
 nuget FSharp.Core
+nuget FSharp.SystemCommandLine

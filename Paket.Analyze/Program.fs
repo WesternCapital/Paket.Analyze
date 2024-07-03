@@ -1,5 +1,6 @@
 ﻿open Paket
 open Chessie.ErrorHandling
+open System.IO
 
 module Trial =
     let defaultWith errorHandler (result: Chessie.ErrorHandling.Result<'TSuccess, 'TError>) = 
@@ -11,6 +12,13 @@ module Trial =
 
 
 let packageNameFromTriple (_group, packageName, _version) = packageName
+
+module ReferencesFile =
+
+    let listDirectReferences (deps : Dependencies) (refFile: ReferencesFile) =
+        deps.GetDirectDependencies(refFile)
+        |> List.map packageNameFromTriple
+
 
 module Deps =
     let rootDirectory (deps:Dependencies) = DirectoryInfo(deps.RootPath)
@@ -28,12 +36,7 @@ module Deps =
 
     let ListReferencesFiles (deps: Dependencies) =
         deps |> ListProjects|> List.map snd
-            
-module ReferencesFile =
 
-    let listDirectReferences (deps : Dependencies) (refFile: ReferencesFile) =
-        deps.GetDirectDependencies(refFile)
-        |> List.map packageNameFromTriple
 
 
 module LockFile =
@@ -86,20 +89,11 @@ let listAllDependenciesForReferencesFilesSafe environment = trial {
         |> Trial.lift (Set.unionMany)
 }
 
-
-[<EntryPoint>]
-let main _ =
-    // let targetDirectory = "C:/Dev/"
-    let targetDirectory = "X:/source/Paket.Analyze"
-    let includeTransitive = false
-
-    let deps = Paket.Dependencies.Locate targetDirectory
-    
+let listUnreferencedPackages (deps: Dependencies) (includeTransitive: bool) = 
     let rootDependencies = 
         deps.GetDirectDependencies() 
         |> List.map packageNameFromTriple 
         |> Set.ofList
-    
 
     let getReferencedPackages_DirectOnly (deps: Dependencies) =
         Deps.ListReferencesFiles deps
@@ -117,6 +111,12 @@ let main _ =
         | false -> getReferencedPackages_DirectOnly deps
 
     let unreferencedPackages = Set.difference rootDependencies allReferencedPackages
+    unreferencedPackages
+
+let listUnreferencedHandler (includeTransitive: bool, targetDirectory: DirectoryInfo) = 
+    let deps = Paket.Dependencies.Locate (string targetDirectory)
+
+    let unreferencedPackages = listUnreferencedPackages deps includeTransitive
 
     if unreferencedPackages |> Set.isEmpty then
         printfn "Every package in the paket.dependencies is referenced in a paket.references"
@@ -126,4 +126,23 @@ let main _ =
         unreferencedPackages
         |> Set.iter (printfn "  %s")
 
-    0
+open FSharp.SystemCommandLine
+[<EntryPoint>]
+let main argv =
+    let listUnreferenced = command "list-unreferenced" {
+        description "List all packages in the paket.dependencies that don't show up in any paket.references. Only counts packages directly listed a paket.references by default"
+        inputs (
+            Input.Option<bool>("--include-transitive", defaultValue = false, description ="Count transitive dependencies when deciding if a package is used by a paket.references. Useful to find packages that are completely unused."),
+            Input.Option<DirectoryInfo>(
+                name ="--paket-root",
+                defaultValue = DirectoryInfo(Directory.GetCurrentDirectory()), 
+                description = "A directory in the paket hierarchy you want to analyze (probably where paket.dependencies file is, though directory in the paket hierarchy works)")
+        )
+        setHandler listUnreferencedHandler
+    }
+
+    rootCommand argv {
+        description "Answer questions about paket dependency graphs (i.e. List unreferenced packages)"
+        setHandler id
+        addCommand listUnreferenced
+    }
