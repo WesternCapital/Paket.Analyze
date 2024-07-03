@@ -4,3 +4,4 @@ storage: none
 
 
 nuget Paket.Core
+nuget FSharp.Core

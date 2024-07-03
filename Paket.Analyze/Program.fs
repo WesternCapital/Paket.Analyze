@@ -15,56 +15,71 @@ let packageNameFromTriple (_group, packageName, _version) = packageName
 
 module Deps =
     let rootDirectory (deps:Dependencies) = DirectoryInfo(deps.RootPath)
-    let Process (dependencies: Dependencies) f =
+    let Process f (dependencies: Dependencies) =
             dependencies |> rootDirectory |> PaketEnv.fromRootDirectory
             >>= f
             |> returnOrFail
 
+    let ListProjects (deps: Dependencies) = 
+        let getProjects (paketEnv:PaketEnv) = trial{
+            return paketEnv.Projects
+        }
+        
+        deps |> Process getProjects
+
+    let ListReferencesFiles (deps: Dependencies) =
+        deps |> ListProjects|> List.map snd
+            
+
+
+let ListAllDependenciesForReferencesFiles groupName environment = trial {
+    let! lockFile = environment |> PaketEnv.ensureLockFileExists
+    
+    let listAllDepsForReferencesFile groupName (refFile: ReferencesFile) = 
+        lockFile.GetPackageHullSafe (refFile, groupName)
+
+    return! 
+        environment.Projects
+        |> List.map (snd >> listAllDepsForReferencesFile groupName)
+        |> Trial.collect
+        |> Trial.lift (List.collect Set.toList)
+}
+
+
 [<EntryPoint>]
 let main _ =
-    // let targetDirectory = "C:/Dev/"
-    // let targetGroup = GroupName "Current"
-    let targetDirectory = "X:/source/Paket.Analyze"
-    let targetGroup = Paket.Constants.MainDependencyGroup
+    let targetDirectory = "C:/Dev/"
+    let targetGroup = GroupName "Current"
+    // let targetDirectory = "X:/source/Paket.Analyze"
+    // let targetGroup = Paket.Constants.MainDependencyGroup
 
     let deps = Paket.Dependencies.Locate targetDirectory
     
-    let ListAllDependenciesForReferencesFiles groupName environment = trial {
-        let! lockFile = environment |> PaketEnv.ensureLockFileExists
-        
-        let listAllDepsForReferencesFile groupName (refFile: ReferencesFile) = 
-            lockFile.GetPackageHullSafe (refFile, groupName)
-
-        return! 
-            environment.Projects
-            |> List.map (snd >> listAllDepsForReferencesFile groupName)
-            |> Trial.collect
-            |> Trial.lift (List.collect Set.toList)
-    }
-
-    let ListDirectDependenciesForReferencesFiles groupName environment = trial {
-        let! lockFile = environment |> PaketEnv.ensureLockFileExists
-
-        let listDepsForReferencesFile refFile =
-            deps.GetDirectDependencies(refFile) 
-        
-        return
-            environment.Projects
-            |> List.collect (snd >> listDepsForReferencesFile)
-            |> List.map packageNameFromTriple
-    }
-
-    let rootDependencies = deps.GetDirectDependencies()
     
+
+    let rootDependencies = 
+        deps.GetDirectDependencies() 
+        |> List.map packageNameFromTriple 
+        |> Set.ofList
+    
+    let listPackagesForRefFile refFile =
+        deps.GetDirectDependencies(refFile)
+        |> List.map packageNameFromTriple
+
     let collectedDirectReferences =
-        ListDirectDependenciesForReferencesFiles targetGroup |> Deps.Process deps
+        Deps.ListReferencesFiles deps
+        |> List.collect listPackagesForRefFile
+        |> Set.ofList
 
-    printfn "Root deps: "
 
-    // rootDependencies
-    collectedDirectReferences
-    |> List.map (printfn "%A")
-    |> ignore
+    let unreferencedPackages = Set.difference rootDependencies collectedDirectReferences
 
-    printfn "Done"
+    if unreferencedPackages |> Set.isEmpty then
+        printfn "Every package in the paket.dependencies is referenced in a paket.references"
+    else
+        printfn "paket.dependencies packages not found in any paket.references:"
+
+        unreferencedPackages
+        |> Set.iter (printfn "  %s")
+
     0
