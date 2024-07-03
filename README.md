@@ -66,6 +66,8 @@ PROBLEM: GetPackageHull returns all dependencies, but I just want direct for now
 Q: How does Dependencies.GetDirectDependencies do it?
 - [It's more complicated than I expected](https://github.com/fsprojects/Paket/blob/d6fee2407c91a84ef16c39a92cdcfc758e9f25f7/src/Paket.Core/PublicAPI.fs#L564)
 
+`list-unreferenced`
+
 ## Transitive reference support 
 
 It's still not clear how I would approach finding projects where a file is referenced transitively.
@@ -79,6 +81,7 @@ Q: is there a method that returns all dependencies of a project?
 
 I don't think the install model is what i'm looking for. Seems more like methods for installing an individual package than a tree of packages to install
 
+NOTE: I thought I could shortcut by using `lockFileGroup.Resolution`, but I'm realizing the lock file will include dependencies even if they aren't in any reference files, so I still need to interate over reference files and get package hulls. Ideally they'd be the same, but the whole point of this analysis is that they might not be
 
 ## Testing
 
@@ -88,3 +91,11 @@ Q: how do I test this project?
 
 Q: Is there an a composable way to turn domain errors into strings?
 - A: [yes, DomainMessage has an overloaded .ToString](https://github.com/fsprojects/Paket/blob/d6fee2407c91a84ef16c39a92cdcfc758e9f25f7/src/Paket.Core/Common/Domain.fs#L151)
+
+
+
+## Future: 
+
+Projects I'd like to work on in the future
+- set up some in-repo automated tests (instead of just validating it against my projects)
+- ask what projects a package is referenced in, direct or transitive (and maybe communicate if the reference is direct or transitive?). This is paket find-refs, but including transitive references
