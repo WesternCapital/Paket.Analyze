@@ -90,10 +90,31 @@ Q: Is there an a composable way to turn domain errors into strings?
 - A: [yes, DomainMessage has an overloaded .ToString](https://github.com/fsprojects/Paket/blob/d6fee2407c91a84ef16c39a92cdcfc758e9f25f7/src/Paket.Core/Common/Domain.fs#L151)
 
 
+## Transitive find-refs thoughts
+
+It might be worth proxying find-refs, but then adding an `--include-transitive` option
+
+For transitive, I probably want to list not just what projects include a reference, but the reasons each project has that reference
+Something like
+
+```
+path/to/project.fsproj
+  top-level in paket.references
+  via package-x
+  via package-y
+
+path/to/other-proj
+  via package-x
+```
+
+This way I can see all they ways a project requires a package at once. 
+This way I don't try to remove a package just to find that actually it was needed anyway. 
+In a way, I can see the degree of dependence
+
 ## Tasks
 
-- [ ] Clean up the readme
-- [ ] package as a dotnet tool
+- [x] Clean up the readme
+- [x] package as a dotnet tool
 
 
 ## Future: 
