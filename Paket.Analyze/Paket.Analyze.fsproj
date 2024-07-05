@@ -4,9 +4,27 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
+  <PropertyGroup>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>paket-analyze</ToolCommandName>
+		<PackageId>WesternCapital.paket-analyze</PackageId>
+		<Title>paket-analyze</Title>
+		<VersionPrefix>0.1.0</VersionPrefix>
+		<Description>
+		  This tool answers questions about your paket dependency graph. (i.e. find unreferenced packages)
+		</Description>
+		<Authors>Spencer Farley</Authors>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<RepositoryUrl>https://github.com/westerncapital/paket.analyze</RepositoryUrl>
+		<PackageTags>paket</PackageTags>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
   <ItemGroup>
     <None Include="paket.references" />
     <Compile Include="Program.fs" />
   </ItemGroup>
+  <ItemGroup>
+		<None Include="..\README.md" Pack="true" PackagePath="\" />
+	</ItemGroup>
   <Import Project="..\.paket\Paket.Restore.targets" />
 </Project>
