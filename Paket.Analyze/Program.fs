@@ -126,9 +126,25 @@ let listUnreferencedHandler (includeTransitive: bool, targetDirectory: Directory
         unreferencedPackages
         |> Set.iter (printfn "  %s")
 
+open System
+
+let paketLoggingWrapper f args=
+    try 
+        f args
+    with
+    | exn when not (exn :? System.NullReferenceException) ->
+        Environment.ExitCode <- 1
+        Paket.Logging.traceErrorfn "Paket failed with"
+        if Environment.GetEnvironmentVariable "PAKET_DETAILED_ERRORS" = "true" then
+            Paket.Logging.printErrorExt true true true exn
+        else Paket.Logging.printError exn
+
 open FSharp.SystemCommandLine
 [<EntryPoint>]
 let main argv =
+    // want to ensure the logging to console is registered only once
+    use consoleTrace = Logging.event.Publish |> Observable.subscribe Logging.traceToConsole
+
     let listUnreferenced = command "list-unreferenced" {
         description "List all packages in the paket.dependencies that don't show up in any paket.references. Only counts packages directly listed a paket.references by default"
         inputs (
@@ -138,10 +154,10 @@ let main argv =
                 defaultValue = DirectoryInfo(Directory.GetCurrentDirectory()), 
                 description = "A directory in the paket hierarchy you want to analyze (probably where paket.dependencies file is, though directory in the paket hierarchy works)")
         )
-        setHandler listUnreferencedHandler
+        setHandler (paketLoggingWrapper listUnreferencedHandler)
     }
 
-    rootCommand argv {
+    rootCommand [|"list-unreferenced"; "--paket-root"; @"X:\source\PlaywrightRefTest\"|] {
         description "Answer questions about paket dependency graphs (i.e. List unreferenced packages)"
         setHandler id
         addCommand listUnreferenced
