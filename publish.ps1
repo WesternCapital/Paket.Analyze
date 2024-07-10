@@ -1,7 +1,7 @@
 Param(
   [switch]$SkipDuplicationCheck
 )
-pushDir
+Push-Location
 cd $PSScriptRoot
 dotnet pack --include-source
 if($lastexitcode -eq 0){
@@ -22,4 +22,4 @@ if($lastexitcode -eq 0){
 }else{
     Write-Error "Failed to pack package: $LASTEXITCODE"
 }
-popdir
+Pop-Location
