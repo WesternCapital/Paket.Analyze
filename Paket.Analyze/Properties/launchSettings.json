@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Paket.Analyze": {
+      "commandName": "Project",
+      "commandLineArgs": "list-unreferenced --paket-root X:\\source\\WesternCap"
+    }
+  }
+}

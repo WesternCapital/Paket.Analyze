@@ -45,28 +45,6 @@ module LockFile =
         |> List.ofSeq
         |> List.map _.Name
 
-// let listAllDependenciesForReferencesFiles (deps:Dependencies) = 
-//     let lockFile = deps.GetLockFile()
-    
-//     let listAllPackages groupName (refFile : ReferencesFile)=
-//         lockFile.GetPackageHull (groupName, refFile) 
-//         |> _.Keys 
-//         |> List.ofSeq
-//         |> List.map (snd >> _.Name)
-
-//     let listAllDepsForGroup (group: LockFileGroup) = 
-//         group.Resolution.Keys
-//         |> List.ofSeq
-//         |> List.map _.Name
-        
-
-//     return! 
-//         environment.Projects
-//         |> List.map (snd >> listAllDepsForReferencesFile groupName)
-//         |> Trial.collect
-//         |> Trial.lift (List.collect Set.toList)
-
-
 
 let listAllDependenciesForReferencesFilesSafe environment = trial {
     // this emulates what is used for find-refs
@@ -157,7 +135,7 @@ let main argv =
         setHandler (paketLoggingWrapper listUnreferencedHandler)
     }
 
-    rootCommand [|"list-unreferenced"; "--paket-root"; @"X:\source\PlaywrightRefTest\"|] {
+    rootCommand argv {
         description "Answer questions about paket dependency graphs (i.e. List unreferenced packages)"
         setHandler id
         addCommand listUnreferenced
