@@ -1,9 +1,9 @@
-﻿open Paket
+open Paket
 open Chessie.ErrorHandling
 open System.IO
 
 module Trial =
-    let defaultWith errorHandler (result: Chessie.ErrorHandling.Result<'TSuccess, 'TError>) = 
+    let defaultWith errorHandler (result: Chessie.ErrorHandling.Result<'TSuccess, 'TError>) =
         match result with
         | Ok (a,_) -> a
         | Bad errorList -> errorHandler errorList
@@ -27,11 +27,11 @@ module Deps =
             >>= f
             |> returnOrFail
 
-    let ListProjects (deps: Dependencies) = 
+    let ListProjects (deps: Dependencies) =
         let getProjects (paketEnv:PaketEnv) = trial{
             return paketEnv.Projects
         }
-        
+
         deps |> Process getProjects
 
     let ListReferencesFiles (deps: Dependencies) =
@@ -40,7 +40,7 @@ module Deps =
 
 
 module LockFile =
-    let listAllDepsForGroup (group: LockFileGroup) = 
+    let listAllDepsForGroup (group: LockFileGroup) =
         group.Resolution.Keys
         |> List.ofSeq
         |> List.map _.Name
@@ -49,28 +49,28 @@ module LockFile =
 let listAllDependenciesForReferencesFilesSafe environment = trial {
     // this emulates what is used for find-refs
     let! lockFile = environment |> PaketEnv.ensureLockFileExists
-    
-    let listAllDepsForReferencesFile (refFile: ReferencesFile) = 
-        let listAllPackages groupName=
-            lockFile.GetPackageHullSafe (refFile, groupName) 
 
-        lockFile.Groups.Keys 
+    let listAllDepsForReferencesFile (refFile: ReferencesFile) =
+        let listAllPackages groupName=
+            lockFile.GetPackageHullSafe (refFile, groupName)
+
+        lockFile.Groups.Keys
         |> List.ofSeq
         |> List.map listAllPackages
         |> Trial.collect
         |> Trial.lift (Set.unionMany)
 
-    return! 
+    return!
         environment.Projects
         |> List.map (snd >> listAllDepsForReferencesFile)
         |> Trial.collect
         |> Trial.lift (Set.unionMany)
 }
 
-let listUnreferencedPackages (deps: Dependencies) (includeTransitive: bool) = 
-    let rootDependencies = 
-        deps.GetDirectDependencies() 
-        |> List.map packageNameFromTriple 
+let listUnreferencedPackages (deps: Dependencies) (includeTransitive: bool) =
+    let rootDependencies =
+        deps.GetDirectDependencies()
+        |> List.map packageNameFromTriple
         |> Set.ofList
 
     let getReferencedPackages_DirectOnly (deps: Dependencies) =
@@ -79,7 +79,7 @@ let listUnreferencedPackages (deps: Dependencies) (includeTransitive: bool) =
         |> Set.ofList
 
     let getReferencedPackages_IncludeTransitive (deps: Dependencies) =
-        deps 
+        deps
         |> Deps.Process listAllDependenciesForReferencesFilesSafe
         |> Set.map _.Name
 
@@ -91,7 +91,7 @@ let listUnreferencedPackages (deps: Dependencies) (includeTransitive: bool) =
     let unreferencedPackages = Set.difference rootDependencies allReferencedPackages
     unreferencedPackages
 
-let listUnreferencedHandler (includeTransitive: bool, targetDirectory: DirectoryInfo) = 
+let listUnreferencedHandler (includeTransitive: bool, targetDirectory: DirectoryInfo) =
     let deps = Paket.Dependencies.Locate (string targetDirectory)
 
     let unreferencedPackages = listUnreferencedPackages deps includeTransitive
@@ -107,7 +107,7 @@ let listUnreferencedHandler (includeTransitive: bool, targetDirectory: Directory
 open System
 
 let paketLoggingWrapper f args=
-    try 
+    try
         f args
     with
     | exn when not (exn :? System.NullReferenceException) ->
@@ -129,7 +129,7 @@ let main argv =
             Input.Option<bool>("--include-transitive", defaultValue = false, description ="Count transitive dependencies when deciding if a package is used by a paket.references. Useful to find packages that are completely unused."),
             Input.Option<DirectoryInfo>(
                 name ="--paket-root",
-                defaultValue = DirectoryInfo(Directory.GetCurrentDirectory()), 
+                defaultValue = DirectoryInfo(Directory.GetCurrentDirectory()),
                 description = "A directory in the paket hierarchy you want to analyze (probably where paket.dependencies file is, though directory in the paket hierarchy works)")
         )
         setHandler (paketLoggingWrapper listUnreferencedHandler)
